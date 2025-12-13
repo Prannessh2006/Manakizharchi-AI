@@ -25,9 +25,9 @@ matplotlib.use('Agg')
 
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
-genai.configure(api_key="AIzaSyAE1xIdEAge1jW9NGILWBJhhk2guanfDts")
+genai.configure(api_key="API_KEY")
 
-LLM = ChatGroq(groq_api_key = "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",model="meta-llama/llama-4-scout-17b-16e-instruct")
+LLM = ChatGroq(groq_api_key = "API_KEY",model="meta-llama/llama-4-scout-17b-16e-instruct")
 
 try:
     nltk.data.find('tokenizers/punkt')
