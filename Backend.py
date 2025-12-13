@@ -22,12 +22,12 @@ import google.generativeai as genai
 
 matplotlib.use('Agg')
 
-GROQ_API_KEY = "gsk_..."
-GEMINI_API_KEY = "AIza..."
 
-genai.configure(api_key=GEMINI_API_KEY)
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-llm = ChatGroq(groq_api_key=GROQ_API_KEY, model="llama3-8b-8192")
+
+genai.configure(api_key="AIzaSyAE1xIdEAge1jW9NGILWBJhhk2guanfDts")
+
+LLM = ChatGroq(groq_api_key = "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",model="meta-llama/llama-4-scout-17b-16e-instruct")
 
 try:
     nltk.data.find('tokenizers/punkt')
