@@ -1,163 +1,251 @@
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-nltk.download("all")
-def textsentimentanalysis():
-  def get_wordnet_pos(pos):
-      if pos.startswith('J'):
-          return "a"
-      elif pos.startswith('V'):
-          return "v"
-      elif pos.startswith('N'):
-          return "n"
-      elif pos.startswith('R'):
-          return "r"
-      else:
-          return "n"
-  sentence = input("Enter the text: ")
+import os
+import io
+import base64
+import re
+import string
+import json
+import emoji
+import chromadb
+import instaloader
+import nltk
+import seaborn as sns
+import matplotlib
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import parse_qs, urlparse
+from sentence_transformers import SentenceTransformer
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk import pos_tag
+from langchain_groq import ChatGroq
+import google.generativeai as genai
 
-  lst = nltk.word_tokenize(sentence)
+matplotlib.use('Agg')
 
-  words = set(stopwords.words("english"))
+GROQ_API_KEY = "gsk_..."
+GEMINI_API_KEY = "AIza..."
 
-  punctuations = list(string.punctuation)
+genai.configure(api_key=GEMINI_API_KEY)
+gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+llm = ChatGroq(groq_api_key=GROQ_API_KEY, model="llama3-8b-8192")
 
-  lst = [i for i in lst if i not in punctuations]
+try:
+    nltk.data.find('tokenizers/punkt')
+    nltk.data.find('corpora/stopwords')
+    nltk.data.find('taggers/averaged_perceptron_tagger')
+    nltk.data.find('corpora/wordnet')
+except nltk.downloader.DownloadError:
+    print("Downloading necessary NLTK data...")
+    nltk.download('punkt', quiet=True)
+    nltk.download('stopwords', quiet=True)
+    nltk.download('averaged_perceptron_tagger', quiet=True)
+    nltk.download('wordnet', quiet=True)
 
-  parts_of_speech = nltk.pos_tag(lst)
+analyzer = SentimentIntensityAnalyzer()
+lemmatizer = WordNetLemmatizer()
+stop_words = set(stopwords.words("english"))
+encoding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-  for i in range(len(parts_of_speech)):
-    parts_of_speech[i] = list(parts_of_speech[i])
-    parts_of_speech[i][1] = get_wordnet_pos(parts_of_speech[i][1])
+def get_wordnet_pos(pos):
+    if pos.startswith('J'):
+        return "a"
+    elif pos.startswith('V'):
+        return "v"
+    elif pos.startswith('N'):
+        return "n"
+    elif pos.startswith('R'):
+        return "r"
+    else:
+        return "n"
 
-  lemmatizer = WordNetLemmatizer()
-  for k in range(len(parts_of_speech)):
-    parts_of_speech[k][0] = lemmatizer.lemmatize(parts_of_speech[k][0],pos=parts_of_speech[k][1])
+def analyze_text_sentiment(text):
+    tokens = nltk.word_tokenize(text.lower())
+    tokens = [t for t in tokens if t.isalpha() and t not in stop_words]
+    pos_tags = nltk.pos_tag(tokens)
+    lemmatized_tokens = [lemmatizer.lemmatize(word, get_wordnet_pos(pos)) for word, pos in pos_tags]
+    processed_text = ' '.join(lemmatized_tokens)
+    scores = analyzer.polarity_scores(processed_text)
+    return {
+        "neutral": f"{scores['neu'] * 100:.2f}%",
+        "positive": f"{scores['pos'] * 100:.2f}%",
+        "negative": f"{scores['neg'] * 100:.2f}%",
+        "compound": scores['compound']
+    }
 
-  analyzer = SentimentIntensityAnalyzer()
-  scores = analyzer.polarity_scores(sentence)
+def create_sentiment_plot(scores):
+    sns.set_theme(style="whitegrid")
+    fig, ax = plt.subplots(figsize=(8, 4))
+    categories = ['Positive', 'Neutral', 'Negative']
+    values = [float(scores['positive'].strip('%')), float(scores['neutral'].strip('%')), float(scores['negative'].strip('%'))]
+    colors = ['#4caf50', '#ff9800', '#f44336']
+    bars = ax.bar(categories, values, color=colors)
+    ax.set_ylabel('Percentage (%)')
+    ax.set_title('Sentiment Analysis Score Breakdown')
+    ax.set_ylim(0, 100)
+    for bar in bars:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2.0, yval + 1, f'{yval:.1f}%', ha='center', va='bottom')
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode('utf-8')
 
-  print(f"Neutral sentiment: {scores['neu'] * 100}%.")
-  print(f"Positive sentiment: {scores['pos'] * 100}%.")
-  print(f"Negative sentiment: {scores['neg'] * 100}%.")
-  print(f"Compound sentiment score: {scores['compound']}.")
-  return
+def analyze_insta_post(session_id, username, password, post_url):
+    try:
+        client = instaloader.Instaloader()
+        if session_id:
+            client.load_session_from_file(username, session_id)
+        elif username and password:
+            client.login(username, password)
+        else:
+            return {"error": "Authentication details are missing."}
 
-def instapostanalysis():
- 
+        media_pk = client.media_pk_from_url(post_url)
+        comments = client.media_comments(media_pk, amount=100)
+        info = client.media_info(media_pk)
+        caption = info.caption_text or "No caption available."
 
-  encoding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+        original_comments = []
+        cleaned_comments = []
+        for comment in comments:
+            original_text = comment.text
+            original_comments.append(original_text)
+            cleaned_text = ' '.join([emoji.demojize(char).strip(":").replace("_", " ") if char in emoji.EMOJI_DATA else char for char in original_text])
+            cleaned_comments.append(cleaned_text.strip())
 
-  genai.configure(api_key="AIzaSyAE1xIdEAge1jW9NGILWBJhhk2guanfDts")
-  gemini = genai.GenerativeModel("gemini-2.5-flash")
+        if not cleaned_comments:
+            return {"error": "No comments found to analyze."}
 
-
-  client = chromadb.Client(Settings(persist_directory="./comments_from_instagram"))
-  c = Client()
-  choice = list(map(str,input("Enter either your session ID or username along with password: ")))
-  if(len(choice)==1):
-      choice[0] = "78496214451%3AmyNN5mpFuWzRWo%3A14%3AAYjz96xbU-nIrztO6V-pd84rOKxHcuC6tSdsBjwpZQ"
-      c.login_by_sessionid(choice[0])
-  elif(len(choice)==2):
-      c.login(choice[0], choice[1])
-      
-  url = input("Enter the URL of that post: ")
-  
-  media = c.media_pk_from_url(url)
-  comments = c.media_comments(media, amount=1000)
-  id = c.media_id(media)
-  info = c.media_info(id)
-  caption  = info.caption_text
-
-  document = []
-  output = []
-
-  for comment in comments:
-      text = comment.text
-      document.append(text)
-      new_text = ""
-
-      for char in text:
-          if char in emoji.EMOJI_DATA:
-              meaning = emoji.demojize(char).strip(":").replace("_", " ")
-              new_text += meaning + " "
-          else:
-              new_text += char
-
-          output.append(new_text.strip())
-
-  filtered_pairs = [(orig, clean) for orig, clean in zip(document, output) if clean and orig]
-  document = [pair[0] for pair in filtered_pairs if pair[0]!=""]
-  output = [pair[1] for pair in filtered_pairs if pair[1]!=""]
-
-  collection = client.get_or_create_collection("Comment_Data")
-
-  iqs = [str(i) for i in range(1,len(output)+1)]
-
-  embedding = encoding_model.encode(output)
-
-  metadatas_for_chroma = [{"original_text": original_comment} for original_comment in document]
-
-  collection.add(documents=output, metadatas=metadatas_for_chroma, embeddings=embedding, ids=iqs)
-
-  def comment_refinement(comments):
-
-    prompt = f"""Given a list of Instagram comments {comments}, generate a set of interpreted statements that reflect the literal meaning or intent behind each original comment. Do not summarize the comments and do not modify their core meaning. Instead, rewrite each comment into a clear, explicit sentence expressing what the commenter intended.
+        prompt = f"""Given a list of Instagram comments {cleaned_comments}, generate a set of interpreted statements that reflect the literal meaning or intent behind each original comment. Do not summarize the comments and do not modify their core meaning. Instead, rewrite each comment into a clear, explicit sentence expressing what the commenter intended.
 Examples:
 • “GOAT” should be rewritten as “The commenter is saying this person is the greatest of all time.”
 • “Fire content” becomes “The commenter thinks the content is extremely good.”
 
-Produce exactly {len(comments)} sentences, one for each comment, and end every sentence with a period.
+Produce exactly {len(cleaned_comments)} sentences, one for each comment, and end every sentence with a period.
 
 The output should be a direct collection of interpreted meanings suitable for sentiment analysis. Keep the interpretations simple, literal, and aligned with the intent behind each comment."""
+        
+        refined_text = gemini_model.generate_content(prompt).text.strip()
+        refined_comments = [s.strip() for s in refined_text.split('.') if s.strip()]
 
-    response = gemini.generate_content(prompt)
-    return response.text.strip()
+        sentiment_scores = [analyzer.polarity_scores(c)['compound'] for c in refined_comments]
+        avg_compound_score = sum(sentiment_scores) / len(sentiment_scores) if sentiment_scores else 0
 
-  refined_ones = comment_refinement(output)
-  refined_comments_list = refined_ones.split(".")
-  refined_comments_list = [h for h in refined_comments_list if h]
+        prompt = f"""Analyze the emotional response of an Instagram audience using two inputs:
+The post description: {caption}
+The average sentiment compound score: {avg_compound_score} ranging from -1 to 1
 
-  analyzer = SentimentIntensityAnalyzer()
-  scores = []
-
-  for i in refined_comments_list:
-    score = analyzer.polarity_scores(i)
-
-    scores.append(score["compound"])
-  avg_score = sum(scores)/len(scores)
-
-  LLM = ChatGroq(groq_api_key = "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",model="meta-llama/llama-4-scout-17b-16e-instruct")
-  def teach_the_model_and_get_answer_based_on_the_score(description,sentimental_compound_score):
-    prompt = f"""Analyze the emotional response of an Instagram audience using two inputs:
-
-The post description {description}
-
-The average sentiment compound score {sentimental_compound_score} ranging from -1 to 1
-• -1 = strongly negative
-• 0 = neutral or mixed
-• 1 = strongly positive
-
-Use the context of the post and the sentiment score together to determine the audience’s dominant emotional state. Classify the audience into one or more of the following categories and interpret what each means in relation to the content:
-
-• Curious: The audience is intrigued and wants to know more. This occurs when the content is novel or unclear, and the sentiment score is slightly positive or neutral.
-• Understanding: The audience grasps the message. Common when the content is informative and the sentiment score is positive.
-• Accepting: The audience agrees with or embraces the content. Usually linked with high positive sentiment.
-• Excited: The audience feels energized or motivated by the content. Seen with strongly positive sentiment around inspiring or innovative posts.
-• Neutral or indifferent: The audience acknowledges the content but shows no strong emotional reaction. Associated with sentiment near 0 on straightforward or expected information.
-• Confused or doubtful: The audience is unsure or questioning the content. Often occurs when the content is complex or ambiguous and the sentiment score is near 0 or slightly negative.
-• Frustrated: The audience reacts negatively due to disagreement, annoyance, or unmet expectations. Seen with moderately negative sentiment.
-• Frightened or worried: The audience perceives the content as threatening or concerning. Strongly negative sentiment combined with topics like advanced technology, risks, or warnings.
-• Sad: The audience reacts with sorrow or empathy. Usually appears with negative sentiment on emotional or sensitive content.
+Classify the audience into one or more of the following categories and interpret what each means in relation to the content:
+• Curious, Understanding, Accepting, Excited, Neutral or indifferent, Confused or doubtful, Frustrated, Frightened or worried, Sad
 
 Based on the post description and the sentiment score, provide:
-
-The most fitting emotional category (or categories)
-
-A brief explanation linking both the content context and the sentiment score to the emotional interpretation
+1. The most fitting emotional category (or categories)
+2. A brief explanation linking both the content context and the sentiment score to the emotional interpretation
 
 Keep the response concise, direct, and context-driven."""
+        
+        interpretation = llm.invoke(prompt).content.strip()
 
-    response = LLM.invoke(prompt)
-    return response.text.strip()
+        plot_img = create_sentiment_distribution_plot(sentiment_scores)
 
-  print(teach_the_model_and_get_answer_based_on_the_score(caption,avg_score))
-  return
+        return {
+            "caption": caption,
+            "avg_compound_score": avg_compound_score,
+            "interpretation": interpretation,
+            "plot": plot_img
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+def create_sentiment_distribution_plot(scores):
+    sns.set_theme(style="whitegrid")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(scores, bins=20, kde=True, color='skyblue', ax=ax)
+    ax.axvline(sum(scores)/len(scores), color='red', linestyle='--', label=f"Average Score: {sum(scores)/len(scores):.2f}")
+    ax.set_title('Distribution of Comment Sentiment Scores')
+    ax.set_xlabel('Compound Sentiment Score')
+    ax.set_ylabel('Number of Comments')
+    ax.legend()
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode('utf-8')
+
+class MyHTTPRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/':
+            self.serve_file('index.html', 'text/html')
+        elif self.path == '/style.css':
+            self.serve_file('style.css', 'text/css')
+        elif self.path == '/script.js':
+            self.serve_file('script.js', 'application/javascript')
+        else:
+            self.send_error(404)
+
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data.decode('utf-8'))
+
+        if self.path == '/api/text-analysis':
+            text = data.get('text', '')
+            if not text:
+                self.send_json_response(400, {"error": "Text is required"})
+                return
+            scores = analyze_text_sentiment(text)
+            plot = create_sentiment_plot(scores)
+            self.send_json_response(200, {"scores": scores, "plot": plot})
+
+        elif self.path == '/api/insta-analysis':
+            session_id = data.get('sessionId')
+            username = data.get('username')
+            password = data.get('password')
+            post_url = data.get('postUrl')
+            if not (session_id or (username and password)) or not post_url:
+                self.send_json_response(400, {"error": "Authentication details and post URL are required"})
+                return
+            result = analyze_insta_post(session_id, username, password, post_url)
+            if "error" in result:
+                self.send_json_response(500, result)
+            else:
+                self.send_json_response(200, result)
+        else:
+            self.send_error(404)
+
+    def serve_file(self, filename, content_type):
+        try:
+            with open(filename, 'rb') as file:
+                self.send_response(200)
+                self.send_header('Content-type', content_type)
+                self.end_headers()
+                self.wfile.write(file.read())
+        except FileNotFoundError:
+            self.send_error(404, f"File Not Found: {filename}")
+
+    def send_json_response(self, status_code, data):
+        response_data = json.dumps(data).encode('utf-8')
+        self.send_response(status_code)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Length', str(len(response_data)))
+        self.end_headers()
+        self.wfile.write(response_data)
+
+    def log_message(self, format, *args):
+        return
+
+def run_server():
+    server_address = ('', 8000)
+    httpd = HTTPServer(server_address, MyHTTPRequestHandler)
+    print("Server running at http://localhost:8000")
+    print("Press Ctrl+C to stop the server.")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nServer is shutting down.")
+        httpd.server_close()
+
+if __name__ == '__main__':
+    run_server()
