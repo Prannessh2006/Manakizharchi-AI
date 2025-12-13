@@ -1,63 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Manakizharchi AI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #020617; /* Slate 950 */
-        color: #f1f5f9; /* Slate 100 */
-        background-image: 
-          radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0px, transparent 50%), 
-          radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
-        background-attachment: fixed;
-      }
-      .glass-panel {
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(148, 163, 184, 0.1);
-      }
-      .glass-card {
-        background: rgba(30, 41, 59, 0.4);
-        border: 1px solid rgba(148, 163, 184, 0.05);
-      }
-      /* Custom scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #334155; 
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #475569; 
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
-    "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manakizharchi AI | Advanced Sentiment & Social Insights</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-  <body>
-    <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
+<body>
+
+    <div class="app-container">
+        <div class="bg-animation">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+
+        <header class="main-header">
+            <div class="logo">
+                <i class="fas fa-brain"></i>
+                <h1>Manakizharchi AI</h1>
+            </div>
+            <p>Advanced Sentiment & Social Insights Engine</p>
+        </header>
+
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="text" data-tilt>
+                <i class="fas fa-file-alt"></i>
+                <span>Text Analysis</span>
+            </button>
+            <button class="tab-btn" data-tab="insta" data-tilt>
+                <i class="fab fa-instagram"></i>
+                <span>Social Media Analysis</span>
+            </button>
+        </nav>
+
+        <main class="main-content">
+            <div class="tab-content active" id="text-tab">
+                <div class="input-card glass-card">
+                    <h2><i class="fas fa-microscope"></i> Analyze Sentiment in Text</h2>
+                    <textarea id="textInput" placeholder="Paste or type the text you wish to analyze..."></textarea>
+                    <button id="analyzeTextBtn" class="glow-btn" data-tilt>
+                        <span class="btn-text">Analyze Text</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="results-container" id="textResults">
+                    <div class="results-header">
+                        <h3>Sentiment Breakdown</h3>
+                        <div class="overall-score" id="textOverallScore">
+                            <span class="score-label">Overall</span>
+                            <span class="score-value">--</span>
+                        </div>
+                    </div>
+                    <div class="results-grid">
+                        <div class="score-card positive" data-score="positive">
+                            <div class="card-icon"><i class="fas fa-laugh-beam"></i></div>
+                            <div class="card-info">
+                                <div class="score-label">Positive</div>
+                                <div class="score-value" id="textPos">0%</div>
+                            </div>
+                            <div class="progress-bar"><div class="progress positive-progress"></div></div>
+                        </div>
+                        <div class="score-card neutral" data-score="neutral">
+                            <div class="card-icon"><i class="fas fa-meh"></i></div>
+                            <div class="card-info">
+                                <div class="score-label">Neutral</div>
+                                <div class="score-value" id="textNeu">0%</div>
+                            </div>
+                            <div class="progress-bar"><div class="progress neutral-progress"></div></div>
+                        </div>
+                        <div class="score-card negative" data-score="negative">
+                            <div class="card-icon"><i class="fas fa-angry"></i></div>
+                            <div class="card-info">
+                                <div class="score-label">Negative</div>
+                                <div class="score-value" id="textNeg">0%</div>
+                            </div>
+                            <div class="progress-bar"><div class="progress negative-progress"></div></div>
+                        </div>
+                    </div>
+                    <div class="plot-container glass-card">
+                        <img id="textPlot" src="" alt="Sentiment Plot">
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="insta-tab">
+                <div class="input-card glass-card">
+                    <h2><i class="fas fa-users"></i> Analyze Instagram Post Engagement</h2>
+                    <div class="auth-group">
+                        <h3>Authentication Method</h3>
+                        <div class="radio-group">
+                            <label><input type="radio" name="authMethod" value="session" checked> Session ID</label>
+                            <label><input type="radio" name="authMethod" value="login"> Username & Password</label>
+                        </div>
+                        <div id="sessionAuth" class="auth-fields">
+                            <input type="text" id="sessionId" placeholder="Instagram Session ID">
+                        </div>
+                        <div id="loginAuth" class="auth-fields" style="display: none;">
+                            <input type="text" id="username" placeholder="Instagram Username">
+                            <input type="password" id="password" placeholder="Instagram Password">
+                        </div>
+                    </div>
+                    <div class="post-group">
+                        <h3>Post URL</h3>
+                        <input type="text" id="postUrl" placeholder="https://www.instagram.com/p/...">
+                    </div>
+                    <button id="analyzeInstaBtn" class="glow-btn" data-tilt>
+                        <span class="btn-text">Analyze Post</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="results-container" id="instaResults">
+                    <div class="result-item glass-card">
+                        <h3><i class="fas fa-closed-captioning"></i> Post Caption</h3>
+                        <p id="postCaption"></p>
+                    </div>
+                    <div class="result-item glass-card">
+                        <h3><i class="fas fa-chart-line"></i> Average Sentiment Score</h3>
+                        <p id="avgScore"></p>
+                    </div>
+                    <div class="result-item glass-card">
+                        <h3><i class="fas fa-brain"></i> Audience Emotional Interpretation</h3>
+                        <p id="interpretation"></p>
+                    </div>
+                    <div class="plot-container glass-card">
+                        <img id="instaPlot" src="" alt="Sentiment Distribution Plot">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
