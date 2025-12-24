@@ -23,7 +23,7 @@ import google.generativeai as genai
 matplotlib.use('Agg')
 
 
-gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+gemini_model = genai.GenerativeModel("gemini-2.5-flash")
 
 genai.configure(api_key="API_KEY")
 
